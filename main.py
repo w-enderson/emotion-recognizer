@@ -81,7 +81,7 @@ model = keras.Sequential([
     layers.Flatten(),
     layers.Dense(1152, activation='relu', kernel_regularizer=regularizers.l2(0.01)),
     layers.Dropout(0.5),
-    layers.Dense(5, activation='softmax')
+    layers.Dense(len(emotions.keys()), activation='softmax')
 ])
 
 
