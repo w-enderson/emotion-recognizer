@@ -8,4 +8,4 @@
 ![](results/img1_result.png)
 ![](results/img2_result.png)
 ![](results/img3_result.png)
-![](results/imgages_result.png)
+![](results/images_result.png)
