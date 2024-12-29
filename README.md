@@ -1,10 +1,10 @@
-Resultados teste 1:
+## Resultados teste 1:
 - Não reconhece faces neutras adequadamente;
 
-Resultados gerais:
+## Resultados gerais:
 ![](results/general_result.png)
 
-teste prático:
+## Teste prático:
 ![](results/img1_result.png)
 ![](results/img2_result.png)
 ![](results/img3_result.png)
