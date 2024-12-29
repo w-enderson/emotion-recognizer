@@ -1,23 +1,26 @@
 import os
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
 
+
+from keras.utils import to_categorical
 
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
 
 import numpy as np
 
 from PIL import Image
 
 emotions = {
-    'angry': 0,
-    'happy': 1,
-    'sad': 2,
-    'surprise': 3,
-    'neutral': 4
+    'happy': 0,
+    'sad': 1,
+    'neutral': 2,
 }
-
 
 # Vetor de treinamento
 X_train = []
@@ -25,12 +28,12 @@ Y_train = []
 
 for dirpath, dirnames, filenames in os.walk("/root/.cache/kagglehub/datasets/samanyuk/fer2013/versions/1/archive (7)/train"):
     dirname = dirpath.split("/")[-1]
-
-    for file in filenames:
-        img= Image.open(os.path.join(dirpath, file))
-        img_matriz= np.array(img)
-        X_train.append(img_matriz)
-        Y_train.append(emotions[dirname])
+    if dirname in emotions.keys():
+        for file in filenames:
+            img= Image.open(os.path.join(dirpath, file))
+            img_matriz= np.array(img)
+            X_train.append(img_matriz)
+            Y_train.append(emotions[dirname])
 
 
 X_train = np.array(X_train)
@@ -42,16 +45,17 @@ Y_test = []
 
 for dirpath, dirnames, filenames in os.walk("/root/.cache/kagglehub/datasets/samanyuk/fer2013/versions/1/archive (7)/test"):
     dirname = dirpath.split("/")[-1]
+    if dirname in emotions.keys():
 
-    for file in filenames:
-        img= Image.open(os.path.join(dirpath, file))
-        img_matriz= np.array(img)
+        for file in filenames:
+            img= Image.open(os.path.join(dirpath, file))
+            img_matriz= np.array(img)
 
-        X_test.append(img_matriz)
-        Y_test.append(emotions[dirname])
+            X_test.append(img_matriz)
+            Y_test.append(emotions[dirname])
 
 
-X_test = np.array(X_test) 
+X_test = np.array(X_test)
 Y_test = np.array(Y_test)
 
 
@@ -66,27 +70,34 @@ X_test = X_test.reshape(-1, 48, 48, 1)
 
 print(X_train.shape, X_test.shape)
 
+# # Codificar rótulos
+# encoder = LabelEncoder()
+# encoder.fit(Y_train)
+
+# Y_train = to_categorical(Y_train, num_classes=5)
+# Y_test = to_categorical(Y_test, num_classes=5)
+
 
 model = keras.Sequential([
     layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 48, 1)),
     layers.Conv2D(32, (3, 3), activation='relu'),
     layers.MaxPooling2D((2, 2)),
-    layers.Dropout(0.3),
+    layers.Dropout(0.5),
 
     layers.Conv2D(128, (3, 3), activation='relu'),
     layers.Conv2D(128, (3, 3), activation='relu'),
     layers.MaxPooling2D((2, 2)),
-    layers.Dropout(0.3),
+    layers.Dropout(0.5),
 
     layers.Conv2D(256, (3, 3), activation='relu'),
     layers.Conv2D(256, (3, 3), activation='relu'),
     layers.MaxPooling2D((2, 2)),
-    layers.Dropout(0.3),
+    layers.Dropout(0.5),
 
     layers.Flatten(),
     layers.Dense(1024, activation='relu'),
-    layers.Dropout(0.3),
-    layers.Dense(5, activation='softmax') 
+    layers.Dropout(0.5),
+    layers.Dense(5, activation='softmax')
 ])
 
 
@@ -97,7 +108,7 @@ model.compile(
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
-history = model.fit(X_train, Y_train, epochs=100, validation_split=0.2, callbacks=[early_stopping], batch_size=64)
+history = model.fit(X_train, Y_train, epochs=60, validation_split=0.2, batch_size=64)
 
 test_loss, test_acc = model.evaluate(X_test, Y_test)
 print(f'Test accuracy: {test_acc}')
@@ -106,9 +117,9 @@ print(f'Test accuracy: {test_acc}')
 
 # Plotando gráficos de perda e acurácia
 def plot_history(history):
-    # perda
+    # Plotar perda
     plt.figure(figsize=(12, 4))
-    
+
     plt.subplot(1, 2, 1)
     plt.plot(history.history['loss'], label='Loss (train)')
     plt.plot(history.history['val_loss'], label='Loss (val)')
@@ -116,8 +127,8 @@ def plot_history(history):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    
-    # acurácia
+
+    # Plotar acurácia
     plt.subplot(1, 2, 2)
     plt.plot(history.history['accuracy'], label='Accuracy (train)')
     plt.plot(history.history['val_accuracy'], label='Accuracy (val)')
@@ -125,8 +136,9 @@ def plot_history(history):
     plt.xlabel('Epochs')
     plt.ylabel('Acurácia')
     plt.legend()
-    
+
     plt.tight_layout()
     plt.show()
 
+# Chamar a função para plotar os gráficos
 plot_history(history)
