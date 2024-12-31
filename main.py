@@ -1,4 +1,5 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import numpy as np
 from PIL import Image
@@ -8,20 +9,26 @@ from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import EarlyStopping
 
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
 import matplotlib.pyplot as plt
 
+
+train_data_path = "/root/.cache/kagglehub/datasets/samanyuk/fer2013/versions/1/archive (7)/train"
+test_data_path = "/root/.cache/kagglehub/datasets/samanyuk/fer2013/versions/1/archive (7)/test"
 
 emotions = {
     'happy': 0,
     'sad': 1,
-    'neutral': 2,
+    'angry': 2,
+    'surprise': 3
 }
 
 # Vetor de treinamento
 X_train = []
 Y_train = []
 
-for dirpath, dirnames, filenames in os.walk("/data/train"):
+for dirpath, dirnames, filenames in os.walk(train_data_path):
     dirname = dirpath.split("/")[-1]
     if dirname in emotions.keys():
         for file in filenames:
@@ -30,15 +37,37 @@ for dirpath, dirnames, filenames in os.walk("/data/train"):
             X_train.append(img_matriz)
             Y_train.append(emotions[dirname])
 
+
 X_train = np.array(X_train)
 Y_train = np.array(Y_train)
+
+X_train = np.expand_dims(X_train, axis=-1)
+
+X_train = X_train / 255.0
+
+print(X_train.shape, Y_train.shape)
+
+datagen = ImageDataGenerator(
+    rotation_range=30,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+datagen.fit(X_train)
+
+
+print(X_train.shape, Y_train.shape)
+
 
 
 # Vetor de teste
 X_test = []
 Y_test = []
 
-for dirpath, dirnames, filenames in os.walk("/data/test"):
+for dirpath, dirnames, filenames in os.walk(test_data_path):
     dirname = dirpath.split("/")[-1]
     if dirname in emotions.keys():
 
@@ -52,17 +81,9 @@ for dirpath, dirnames, filenames in os.walk("/data/test"):
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)
 
-
-# Normalizando vetores
-X_train= X_train / 255.0
-X_test= X_test / 255.0
-
-# Adicionando dimensão do canal
-X_train = X_train.reshape(-1, 48, 48, 1)
-X_test = X_test.reshape(-1, 48, 48, 1)
+X_test = X_test / 255.0
 
 print(X_train.shape, X_test.shape)
-
 
 model = keras.Sequential([
     layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 48, 1)),
@@ -78,8 +99,11 @@ model = keras.Sequential([
     layers.MaxPooling2D((2, 2)),
     layers.Dropout(0.3),
 
+    layers.Conv2D(256, (3, 3), activation='relu'),
+    layers.Dropout(0.3),
+
     layers.Flatten(),
-    layers.Dense(1152, activation='relu', kernel_regularizer=regularizers.l2(0.01)),
+    layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.01)),
     layers.Dropout(0.5),
     layers.Dense(len(emotions.keys()), activation='softmax')
 ])
@@ -93,8 +117,10 @@ model.compile(
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
-history = model.fit(X_train, Y_train, epochs=100, validation_split=0.2, batch_size=32)
-
+history = model.fit(datagen.flow(X_train, Y_train, batch_size=32),
+                    epochs=150,
+                    validation_data=(X_test, Y_test),
+                    )
 
 test_loss, test_acc = model.evaluate(X_test, Y_test)
 print(f'Test accuracy: {test_acc}')
@@ -122,3 +148,4 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+
